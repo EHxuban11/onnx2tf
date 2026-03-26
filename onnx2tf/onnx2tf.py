@@ -56,6 +56,10 @@ from onnx2tf.utils.tf_optional import (
     OptionalTensorFlowDependencyError,
     require_tensorflow,
 )
+from onnx2tf.utils.torch_optional import (
+    OptionalPyTorchDependencyError,
+    require_torch,
+)
 from onnx2tf.tflite_builder.preprocess.rules.cleanup_unused_initializers import (
     prune_unused_initializers_inplace,
 )
@@ -133,6 +137,10 @@ def _set_dummy_inference_defaults(
 
 def _require_tensorflow_for_feature(feature: str) -> None:
     require_tensorflow(str(feature))
+
+
+def _require_torch_for_feature(feature: str) -> None:
+    require_torch(str(feature))
 
 
 def _generated_pytorch_export_skip_reason(
@@ -2351,6 +2359,17 @@ def convert(
     run_flatbuffer_direct_op_error_report = bool(
         check_onnx_tf_outputs_elementwise_close_full
     )
+    required_pytorch_feature: Optional[str] = None
+    if flatbuffer_direct_output_torchscript:
+        required_pytorch_feature = 'flatbuffer_direct TorchScript export'
+    elif flatbuffer_direct_output_dynamo_onnx:
+        required_pytorch_feature = 'flatbuffer_direct Dynamo ONNX export'
+    elif flatbuffer_direct_output_exported_program:
+        required_pytorch_feature = 'flatbuffer_direct ExportedProgram export'
+    elif flatbuffer_direct_output_pytorch:
+        required_pytorch_feature = 'flatbuffer_direct PyTorch package export'
+    if required_pytorch_feature is not None:
+        _require_torch_for_feature(required_pytorch_feature)
     required_tensorflow_feature: Optional[str] = None
     if tflite_backend == 'tf_converter':
         required_tensorflow_feature = 'tflite_backend="tf_converter"'
@@ -2558,16 +2577,10 @@ def convert(
             runtime_output_folder_path,
             f'{output_file_name}_pytorch_accuracy_report.json',
         )
-        try:
-            from onnx2tf.tflite_builder.pytorch_accuracy_evaluator import (
-                evaluate_pytorch_package_outputs,
-            )
-        except Exception as ex:
-            warn(
-                'ONNX/PyTorch output check was skipped because evaluator dependencies are unavailable. '
-                f'source={source_label} reason={ex}'
-            )
-            return None
+        _require_torch_for_feature('ONNX/PyTorch validation')
+        from onnx2tf.tflite_builder.pytorch_accuracy_evaluator import (
+            evaluate_pytorch_package_outputs,
+        )
 
         eval_num_samples_local = int(eval_num_samples) if bool(eval_with_onnx) else 1
         try:
@@ -2627,16 +2640,10 @@ def convert(
             runtime_output_folder_path,
             f'{output_file_name}_pytorch_accuracy_report.json',
         )
-        try:
-            from onnx2tf.tflite_builder.pytorch_accuracy_evaluator import (
-                evaluate_tflite_pytorch_package_outputs,
-            )
-        except Exception as ex:
-            warn(
-                'TFLite/PyTorch output check was skipped because evaluator dependencies are unavailable. '
-                f'source={source_label} reason={ex}'
-            )
-            return None
+        _require_torch_for_feature('TFLite/PyTorch validation')
+        from onnx2tf.tflite_builder.pytorch_accuracy_evaluator import (
+            evaluate_tflite_pytorch_package_outputs,
+        )
 
         try:
             report = evaluate_tflite_pytorch_package_outputs(
@@ -9539,7 +9546,10 @@ def main():
             non_verbose=args.non_verbose,
             verbosity=args.verbosity,
         )
-    except OptionalTensorFlowDependencyError as ex:
+    except (
+        OptionalTensorFlowDependencyError,
+        OptionalPyTorchDependencyError,
+    ) as ex:
         error(str(ex))
         sys.exit(1)
 
