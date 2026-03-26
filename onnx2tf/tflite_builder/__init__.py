@@ -49,10 +49,8 @@ from onnx2tf.tflite_builder.split_planner import (
     write_split_model_files_and_manifest,
     write_split_plan_report,
 )
-from onnx2tf.tflite_builder.split_saved_model_exporter import (
-    export_split_saved_models,
-)
-from onnx2tf.utils.common_functions import weights_export
+from onnx2tf.utils.onnx_litert_runtime import weights_export
+from onnx2tf.utils.tf_optional import require_tensorflow
 
 
 def _progress_write(*, message: str, enabled: bool) -> None:
@@ -821,8 +819,13 @@ def export_tflite_model_flatbuffer_direct(**kwargs: Any) -> Dict[str, Any]:
         _advance_export_progress()
 
         if output_saved_model_from_model_ir:
+            require_tensorflow("flatbuffer_direct SavedModel export")
             _set_export_progress_desc("write saved_model")
             if split_manifest_path is not None:
+                from onnx2tf.tflite_builder.split_saved_model_exporter import (
+                    export_split_saved_models,
+                )
+
                 split_saved_model_outputs = export_split_saved_models(
                     model_ir=model_ir,
                     split_manifest_path=split_manifest_path,
@@ -888,6 +891,7 @@ def export_tflite_model_flatbuffer_direct(**kwargs: Any) -> Dict[str, Any]:
                     if fallback_saved_model_path is not None and str(fallback_saved_model_path).strip() != "":
                         return str(fallback_saved_model_path)
                     try:
+                        require_tensorflow("flatbuffer_direct PyTorch SavedModel bridge")
                         from onnx2tf.tflite_builder.saved_model_exporter import (
                             export_saved_model_from_model_ir,
                         )

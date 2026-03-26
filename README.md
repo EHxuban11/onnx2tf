@@ -884,8 +884,8 @@ Video speed is adjusted approximately 50 times slower than actual speed.
 - onnxoptimizer==0.4.2
 - sne4onnx>=2.0.1
 - sng4onnx>=2.0.1
-- tensorflow==2.19.0
-- tf-keras==2.19.0
+- tensorflow==2.19.0 (optional: TensorFlow-backed export / tf_converter only)
+- tf-keras==2.19.0 (optional: TensorFlow-backed export / tf_converter only)
 - ai-edge-litert==2.1.2
 - h5py==3.12.1
 - psutil==5.9.5
@@ -951,6 +951,11 @@ Video speed is adjusted approximately 50 times slower than actual speed.
 
   or
 
+  # Install TensorFlow-backed features too (tf_converter, SavedModel/H5/Keras exports).
+  uv pip install -U 'onnx2tf[tensorflow]'
+
+  or
+
   curl -LsSf https://astral.sh/uv/install.sh | sh
   uv python install 3.12.12
   uv venv -p 3.12.12 .venv
@@ -960,6 +965,10 @@ Video speed is adjusted approximately 50 times slower than actual speed.
   or
 
   pip install -e .
+
+  or
+
+  pip install -e '.[tensorflow]'
 
   or
 
